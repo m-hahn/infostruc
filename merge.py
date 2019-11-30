@@ -5,7 +5,7 @@ import gzip
 
 # Of interest: tfa
 import os
-
+import sys
 
 
 import xml.etree.ElementTree as ET
@@ -30,7 +30,7 @@ wordsToData = {}
 
 for directory in os.listdir("/u/scr/mhahn/CORPORA/czech_pdt/PDT3.5/data/tamw/"):
   BASE_DIR = "/u/scr/mhahn/CORPORA/czech_pdt/PDT3.5/data/tamw/"+directory
-  files = set([x[:-5] for x in os.listdir(BASE_DIR)])
+  files = sorted(list(set([x[:-5] for x in os.listdir(BASE_DIR)])))
   print(files)
 #  quit()
   for fileName in files:
@@ -94,13 +94,14 @@ for directory in os.listdir("/u/scr/mhahn/CORPORA/czech_pdt/PDT3.5/data/tamw/"):
 
 counter = 0
 for partition in ["test", "dev", "train"]:
+  with open("/u/scr/mhahn/CORPORA/czech_pdt_infostruc/"+partition+".conllu", "w") as outFile:
    with open("/u/scr/corpora/Universal_Dependencies/Universal_Dependencies_2.4/ud-treebanks-v2.4/UD_Czech-PDT/cs_pdt-ud-train.conllu", "r") as inFile:
       sentence = []
       attribs = {}
       for line in inFile:
         line = line.strip()
         if line.startswith("# "):
-           print(line)
+           print(line, file=outFile)
            try:
               index = line.index("=")
               attribs[line[:index-1]] = line[index+2:]
@@ -117,7 +118,8 @@ for partition in ["test", "dev", "train"]:
                 annotated = wordsToData[sentenceID]["linearized"]
                 fromAnnotation = [x[0] for x in annotated]
                 fromUD = attribs["# text"]
-                assert "".join(fromAnnotation) == fromUD.replace(" ", ""), (fromAnnotation, fromUD)
+                if "".join(fromAnnotation) != fromUD.replace(" ", ""):
+                  print((fromAnnotation, fromUD), file=sys.stderr)
                 print(fromAnnotation)
    #             print("\n".join(sentence))
                 lastWord = sentence[-1]
@@ -129,15 +131,29 @@ for partition in ["test", "dev", "train"]:
                    print(line)
                    print(counterInUD, counterInAnnotation)
                    form = line[1]
-                   assert form == fromAnnotation[counterInAnnotation], (form, fromAnnotation[counterInAnnotation])
+                   if form != fromAnnotation[counterInAnnotation]:
+                     print((form, fromAnnotation[counterInAnnotation]), file=sys.stderr)
+                   sentence[counterInUD]+="\t"+annotated[counterInAnnotation][1].get("tfa", "N")
                    if "-" in line[0]:
                       start, end = line[0].split("-")
+                      for i in range(counterInUD+1, 2 + int(end) - int(start)):
+                         sentence[counterInUD]+="\t"+annotated[counterInAnnotation][1].get("tfa", "N")
                       counterInUD += 2 + int(end) - int(start)
                    else:
                       counterInUD += 1
                    counterInAnnotation += 1
    #             assert len(fromAnnotation) == int(lastWord[:lastWord.index("\t")])
    #             break
+             else:
+                print(("MISSING SENTENCE", sentenceID), file=sys.stderr)
+                for i in range(len(sentence)):
+                    sentence[i] += "\tUNK"
+
+             for line in sentence:
+                print(line, file=outFile)
+
+          print(line, file=outFile)
+
           sentence = []
           attribs = {}
         else:
