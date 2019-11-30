@@ -26,59 +26,65 @@ def recursivelyBuildTree(lm, SENT_ID):
 
 wordsToData = {}
 
-tree_m = ET.parse('ln94205_131.m').getroot()
-tree_t = ET.parse('ln94205_131.t').getroot()
 
-print(tree_t)
-print(tree_t.tag)
-print(tree_t.attrib)
+for directory in ["train-1"]:
+    
+    tree_m = ET.parse('ln94205_131.m').getroot()
+    tree_t = ET.parse('ln94205_131.t').getroot()
+    
+    print(tree_t)
+    print(tree_t.tag)
+    print(tree_t.attrib)
+    
+    
+    
+    
+    for child in tree_t:
+       if child.tag.endswith("trees"):
+         for sentence in child:
+            SENT_ID = sentence.attrib["id"][2:]
+            wordsToData[SENT_ID] = {}
+            for annotation in sentence:
+                #print(annotation)
+                if annotation.tag.endswith("children"):
+                    for lm in annotation:
+                      fullTree = recursivelyBuildTree(lm, SENT_ID) #print("LM", lm.attrib)
+                 #     print("TREE")
+                  #    print(fullTree)
+         #   break
+#         break
+    
+   # print(wordsToData)
+    
+    # c contrastive & bound
+    # f non-bound
+    # t non-contrastive bound
+    
+    for child in tree_m: 
+       if child.tag.endswith("s"):
+           SENT_ID = child.attrib["id"][2:]
+           sentence = []
+           wordsToData[SENT_ID]["linearized"] = sentence
+           for child2 in child:
+               #print(child2.attrib)
+               dataHere = wordsToData[SENT_ID].get(child2.attrib["id"][2:], {})
+               wordsToData[SENT_ID][child2.attrib["id"][2:]] = dataHere
+               #print(dataHere)
+               wordForm = None
+               for anno in child2:
+                   if anno.tag.endswith("form"):
+                      dataHere["wordForm"] = anno.text
+                      wordForm = anno.text
+                #      print("WORD FORM", wordForm)
+                      break
+               sentence.append((wordForm, dataHere))
+#           print(sentence)
+           surfaceString = " ".join([x[0] for x in sentence])
+           print(surfaceString)
+ #          break
+#quit()
 
-
-
-
-for child in tree_t:
-   if child.tag.endswith("trees"):
-     for sentence in child:
-        SENT_ID = sentence.attrib["id"][2:]
-        wordsToData[SENT_ID] = {}
-        for annotation in sentence:
-            print(annotation)
-            if annotation.tag.endswith("children"):
-                for lm in annotation:
-                  fullTree = recursivelyBuildTree(lm, SENT_ID) #print("LM", lm.attrib)
-                  print("TREE")
-                  print(fullTree)
-        break
-     break
-
-print(wordsToData)
-
-# c contrastive & bound
-# f non-bound
-# t non-contrastive bound
-
-for child in tree_m: 
-   if child.tag.endswith("s"):
-       SENT_ID = child.attrib["id"][2:]
-       sentence = []
-       for child2 in child:
-           print(child2.attrib)
-           dataHere = wordsToData.get(child2.attrib["id"][2:], {})
-           wordsToData[child2.attrib["id"][2:]] = dataHere
-           print(dataHere)
-           wordForm = None
-           for anno in child2:
-               if anno.tag.endswith("form"):
-                  dataHere["wordForm"] = anno.text
-                  wordForm = anno.text
-                  break
-           sentence.append((wordForm, dataHere))
-       print(sentence)
-       surfaceString = " ".join([x[0] for x in sentence])
-       print(surfaceString)
-       break
-
-print(wordsToData)
+#print(wordsToData)
 
 counter = 0
 with open("/u/scr/corpora/Universal_Dependencies/Universal_Dependencies_2.4/ud-treebanks-v2.4/UD_Czech-PDT/cs_pdt-ud-train.conllu", "r") as inFile:
@@ -86,19 +92,41 @@ with open("/u/scr/corpora/Universal_Dependencies/Universal_Dependencies_2.4/ud-t
    attribs = {}
    for line in inFile:
      line = line.strip()
-     if line.startswith("# ") and "=" in line:
-       line=line.split(" = ")
-       attribs[line[0]] = line[1]
+     if line.startswith("# "):
+         line=line.split(" = ")
+         if len(line) > 1:
+            attribs[line[0]] = line[1]
      elif len(line) <= 1:
        if len(attribs) > 0:
           counter += 1
-          if counter % 1000 == 0:
-               print(counter)
+ #         if counter % 1000 == 0:
+#               print(counter)
           sentenceID = attribs['# sent_id']
           if sentenceID in wordsToData:
-             print(wordsToData[sentenceID])
-             print(attribs)
-             break
+             annotated = wordsToData[sentenceID]["linearized"]
+             fromAnnotation = [x[0] for x in annotated]
+             fromUD = attribs["# text"]
+             assert "".join(fromAnnotation) == fromUD.replace(" ", ""), (fromAnnotation, fromUD)
+             print(fromAnnotation)
+#             print("\n".join(sentence))
+             lastWord = sentence[-1]
+             counterInAnnotation = 0
+             counterInUD = 0
+             while counterInUD < len(sentence):
+                line = sentence[counterInUD]
+                line = line.split("\t")
+                print(line)
+                print(counterInUD, counterInAnnotation)
+                form = line[1]
+                assert form == fromAnnotation[counterInAnnotation], (form, fromAnnotation[counterInAnnotation])
+                if "-" in line[0]:
+                   start, end = line[0].split("-")
+                   counterInUD += 2 + int(end) - int(start)
+                else:
+                   counterInUD += 1
+                counterInAnnotation += 1
+#             assert len(fromAnnotation) == int(lastWord[:lastWord.index("\t")])
+#             break
        sentence = []
        attribs = {}
      else:
