@@ -152,7 +152,7 @@ for partition in ["test", "dev", "train"]:
              for line in sentence:
                 print(line, file=outFile)
 
-          print(line, file=outFile)
+          print("\n\n", file=outFile)
 
           sentence = []
           attribs = {}
