@@ -4,6 +4,7 @@
 import gzip
 
 # Of interest: tfa
+import os
 
 
 
@@ -27,14 +28,19 @@ def recursivelyBuildTree(lm, SENT_ID):
 wordsToData = {}
 
 
-for directory in ["train-1"]:
+for directory in os.listdir("/u/scr/mhahn/CORPORA/czech_pdt/PDT3.5/data/tamw/"):
+  BASE_DIR = "/u/scr/mhahn/CORPORA/czech_pdt/PDT3.5/data/tamw/"+directory
+  files = set([x[:-5] for x in os.listdir(BASE_DIR)])
+  print(files)
+#  quit()
+  for fileName in files:
+    print(fileName) 
+    tree_m = ET.fromstring(gzip.open(BASE_DIR+"/"+fileName+".m.gz", "r").read())
+    tree_t = ET.fromstring(gzip.open(BASE_DIR+"/"+fileName+".t.gz", "r").read())
     
-    tree_m = ET.parse('ln94205_131.m').getroot()
-    tree_t = ET.parse('ln94205_131.t').getroot()
-    
-    print(tree_t)
-    print(tree_t.tag)
-    print(tree_t.attrib)
+#    print(tree_t)
+ #   print(tree_t.tag)
+  #  print(tree_t.attrib)
     
     
     
@@ -80,55 +86,60 @@ for directory in ["train-1"]:
                sentence.append((wordForm, dataHere))
 #           print(sentence)
            surfaceString = " ".join([x[0] for x in sentence])
-           print(surfaceString)
+#           print(surfaceString)
  #          break
 #quit()
 
 #print(wordsToData)
 
 counter = 0
-with open("/u/scr/corpora/Universal_Dependencies/Universal_Dependencies_2.4/ud-treebanks-v2.4/UD_Czech-PDT/cs_pdt-ud-train.conllu", "r") as inFile:
-   sentence = []
-   attribs = {}
-   for line in inFile:
-     line = line.strip()
-     if line.startswith("# "):
-         line=line.split(" = ")
-         if len(line) > 1:
-            attribs[line[0]] = line[1]
-     elif len(line) <= 1:
-       if len(attribs) > 0:
-          counter += 1
- #         if counter % 1000 == 0:
-#               print(counter)
-          sentenceID = attribs['# sent_id']
-          if sentenceID in wordsToData:
-             annotated = wordsToData[sentenceID]["linearized"]
-             fromAnnotation = [x[0] for x in annotated]
-             fromUD = attribs["# text"]
-             assert "".join(fromAnnotation) == fromUD.replace(" ", ""), (fromAnnotation, fromUD)
-             print(fromAnnotation)
-#             print("\n".join(sentence))
-             lastWord = sentence[-1]
-             counterInAnnotation = 0
-             counterInUD = 0
-             while counterInUD < len(sentence):
-                line = sentence[counterInUD]
-                line = line.split("\t")
-                print(line)
-                print(counterInUD, counterInAnnotation)
-                form = line[1]
-                assert form == fromAnnotation[counterInAnnotation], (form, fromAnnotation[counterInAnnotation])
-                if "-" in line[0]:
-                   start, end = line[0].split("-")
-                   counterInUD += 2 + int(end) - int(start)
-                else:
-                   counterInUD += 1
-                counterInAnnotation += 1
-#             assert len(fromAnnotation) == int(lastWord[:lastWord.index("\t")])
-#             break
-       sentence = []
-       attribs = {}
-     else:
-       sentence.append(line)
-       
+for partition in ["test", "dev", "train"]:
+   with open("/u/scr/corpora/Universal_Dependencies/Universal_Dependencies_2.4/ud-treebanks-v2.4/UD_Czech-PDT/cs_pdt-ud-train.conllu", "r") as inFile:
+      sentence = []
+      attribs = {}
+      for line in inFile:
+        line = line.strip()
+        if line.startswith("# "):
+           print(line)
+           try:
+              index = line.index("=")
+              attribs[line[:index-1]] = line[index+2:]
+   #           print((line[:index-1], line[index+1:]))
+           except ValueError:
+            _ = 0
+        elif len(line) <= 1:
+          if len(attribs) > 0:
+             counter += 1
+    #         if counter % 1000 == 0:
+   #               print(counter)
+             sentenceID = attribs['# sent_id']
+             if sentenceID in wordsToData:
+                annotated = wordsToData[sentenceID]["linearized"]
+                fromAnnotation = [x[0] for x in annotated]
+                fromUD = attribs["# text"]
+                assert "".join(fromAnnotation) == fromUD.replace(" ", ""), (fromAnnotation, fromUD)
+                print(fromAnnotation)
+   #             print("\n".join(sentence))
+                lastWord = sentence[-1]
+                counterInAnnotation = 0
+                counterInUD = 0
+                while counterInUD < len(sentence):
+                   line = sentence[counterInUD]
+                   line = line.split("\t")
+                   print(line)
+                   print(counterInUD, counterInAnnotation)
+                   form = line[1]
+                   assert form == fromAnnotation[counterInAnnotation], (form, fromAnnotation[counterInAnnotation])
+                   if "-" in line[0]:
+                      start, end = line[0].split("-")
+                      counterInUD += 2 + int(end) - int(start)
+                   else:
+                      counterInUD += 1
+                   counterInAnnotation += 1
+   #             assert len(fromAnnotation) == int(lastWord[:lastWord.index("\t")])
+   #             break
+          sentence = []
+          attribs = {}
+        else:
+          sentence.append(line)
+          
