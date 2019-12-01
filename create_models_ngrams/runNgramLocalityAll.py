@@ -22,7 +22,7 @@ if True:
       params2.append(params[i])
     paramsString = " ".join([str(x) for x in params2])
 #    command = ["/u/nlp/anaconda/ubuntu_16/envs/py27-mhahn/bin/python2.7", "yHyperParamSearchGPUs_CorPost_Automated_OnlyWordForms_Slurm_Ngrams.py", language, "1", "2", "NONE", "RANDOM_BY_TYPE", "0.02", "30"]
-    for MODEL_TYPE in ["REAL_REAL", "RANDOM_INFOSTRUC", "RANDOM_BY_TYPE"]: # "GROUND_INFOSTRUC", 
+    for MODEL_TYPE in ["RANDOM_BY_TYPE", "RANDOM_INFOSTRUC"]: # "GROUND_INFOSTRUC", "REAL_REAL", 
 
        filenames = [x for x in os.listdir(BASE_DIR) if language in x and MODEL_TYPE in x]
        existing = 0
