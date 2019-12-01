@@ -36,7 +36,7 @@ assert args.gamma >= 1
 myID = args.idForProcess
 
 
-TARGET_DIR = "/u/scr/mhahn/deps/memory-need-ngrams/"
+TARGET_DIR = "/u/scr/mhahn/deps/memory-need-ngrams_infostruc/"
 
 
 
@@ -120,7 +120,6 @@ softmax_layer = torch.nn.Softmax()
 logsoftmax = torch.nn.LogSoftmax()
 
 
-
 def orderChildrenRelative(sentence, remainingChildren, reverseSoftmax):
        if args.model == "REAL":
           assert False
@@ -141,16 +140,18 @@ def orderSentence(sentence, dhLogits, printThings):
        # Collect tokens to be removed (i.e., punctuation)
       eliminated = []
    for line in sentence:
-      if line["dep"] == "root":
+      line["coarse_dep"] = makeCoarse(line["dep"])
+
+      if line["coarse_dep"] == "root":
           root = line["index"]
           continue
       # Exclude Punctuation
-      if line["dep"].startswith("punct"):
+      if line["coarse_dep"].startswith("punct"):
          if args.model == "REAL_REAL":
             eliminated.append(line)
          continue
       # Determine ordering relative to head
-      key = (sentence[line["head"]-1]["posUni"], line["dep"], line["posUni"], line["infostruc"])
+      key = (sentence[line["head"]-1]["posUni"], line["coarse_dep"], line["posUni"], line["infostruc"])
       line["dependency_key"] = key
       dhLogit = dhWeights[stoi_deps[key]]
       if args.model == "REAL":
@@ -214,6 +215,8 @@ stoi_pure_deps = dict(zip(itos_pure_deps, range(len(itos_pure_deps))))
 itos_deps = sorted(vocab_deps)
 stoi_deps = dict(zip(itos_deps, range(len(itos_deps))))
 
+
+
 dhWeights = [0.0] * len(itos_deps)
 distanceWeights = [0.0] * len(itos_deps)
 
@@ -221,6 +224,18 @@ distanceWeights = [0.0] * len(itos_deps)
 import os
 
 if args.model == "REAL" or args.model == "REAL_REAL":
+  originalCounter = "NA"
+elif args.model == "RANDOM_BY_TYPE":
+  dhByType = {}
+  distByType = {}
+  for dep in itos_pure_deps:
+    dhByType[makeCoarse(dep)] = random() - 0.5
+    distByType[makeCoarse(dep)] = random()
+  for key in range(len(itos_deps)):
+     key_ = itos_deps[key]
+     _, dep, _, _ = key_
+     dhWeights[key] = dhByType[makeCoarse(dep)]
+     distanceWeights[key] = distByType[makeCoarse(dep)]
   originalCounter = "NA"
 elif args.model == "RANDOM_INFOSTRUC":
   dhByType = {}
@@ -230,11 +245,12 @@ elif args.model == "RANDOM_INFOSTRUC":
       dhByType[(makeCoarse(dep), infostruc)] = random() - 0.5
       distByType[(makeCoarse(dep), infostruc)] = random()
   for key in range(len(itos_deps)):
-     _, dep, _, infostruc = key
+     key_ = itos_deps[key]
+     _, dep, _, infostruc = key_
      dhWeights[key] = dhByType[(makeCoarse(dep), infostruc)]
      distanceWeights[key] = distByType[(makeCoarse(dep), infostruc)]
   originalCounter = "NA"
-elif args.model == "GROUND":
+elif args.model == "GROUND_INFOSTRUC":
   groundPath = "/u/scr/mhahn/deps/manual_output_ground_coarse_infostruc/"
   import os
   files = [x for x in os.listdir(groundPath) if x.startswith(args.language+"_infer")]
@@ -281,7 +297,6 @@ vocab_size = len(itos)
 
 
 
-quit()
 
 import torch.nn.functional
 
@@ -305,7 +320,7 @@ def createStreamContinuous(corpus):
     sentCount = 0
     for sentence in corpus:
        sentCount += 1
-       if sentCount % 10 == 0:
+       if sentCount % 50 == 0:
          print ["DEV SENTENCES", sentCount]
 
        ordered, _ = orderSentence(sentence, dhLogits, sentCount % 500 == 0)
