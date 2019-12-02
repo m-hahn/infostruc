@@ -265,14 +265,44 @@ elif args.model == "GROUND_INFOSTRUC":
          line = line.strip().split("\t")
          assert int(line[headerGrammar.index("Counter")]) >= 1000000
          dependency = line[headerGrammar.index("Dependency")]
+         dependency = dependency.replace("', '", "-").replace("('", "").replace("')", "")
          dhHere = float(line[headerGrammar.index("DH_Mean_NoPunct")])
          distHere = float(line[headerGrammar.index("Distance_Mean_NoPunct")])
          print(dependency, dhHere, distHere)
          dhByDependency[dependency] = dhHere
          distByDependency[dependency] = distHere
   for key in range(len(itos_deps)):
-     dhWeights[key] = dhByDependency[itos_deps[key][1].split(":")[0]]
-     distanceWeights[key] = distByDependency[itos_deps[key][1].split(":")[0]]
+     _, dep, _, infostruc = itos_deps[key]
+     name = makeCoarse(dep)+"-"+infostruc
+     
+     dhWeights[key] = dhByDependency[name]
+     distanceWeights[key] = distByDependency[name]
+  originalCounter = "NA"
+elif args.model == "GROUND":
+  groundPath = "/u/scr/mhahn/deps/manual_output_ground_coarse/"
+  import os
+  files = [x for x in os.listdir(groundPath) if x.startswith(args.language+"_infer")]
+  print(files)
+  assert len(files) > 0
+  with open(groundPath+files[0], "r") as inFile:
+     headerGrammar = next(inFile).strip().split("\t")
+     print(headerGrammar)
+     dhByDependency = {}
+     distByDependency = {}
+     for line in inFile:
+         line = line.strip().split("\t")
+         assert int(line[headerGrammar.index("Counter")]) >= 1000000
+         dependency = line[headerGrammar.index("Dependency")]
+         dhHere = float(line[headerGrammar.index("DH_Mean_NoPunct")])
+         distHere = float(line[headerGrammar.index("Distance_Mean_NoPunct")])
+         print(dependency, dhHere, distHere)
+         dhByDependency[dependency] = dhHere
+         distByDependency[dependency] = distHere
+  for key in range(len(itos_deps)):
+     _, dep, _, _ = itos_deps[key]
+
+     dhWeights[key] = dhByDependency[dep]
+     distanceWeights[key] = distByDependency[dep]
   originalCounter = "NA"
 else:
   assert False, args.model
@@ -460,6 +490,9 @@ for k in range(0,args.cutoff):
        surprisal = 1000
    devSurprisalTable.append(surprisal)
    print("Surprisal", surprisal, len(itos))
+
+
+#assert False
 
 outpath = TARGET_DIR+"/estimates-"+args.language+"_"+__file__+"_model_"+str(myID)+"_"+args.model+".txt"
 print(outpath)
